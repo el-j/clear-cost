@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", sans-serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    margin: 0;
+    font-family: var(--font-sans);
+    background:
+      radial-gradient(circle at top left, rgba(45, 212, 191, 0.22), transparent 32%),
+      radial-gradient(circle at top right, rgba(124, 140, 255, 0.2), transparent 28%),
+      linear-gradient(180deg, #04101d 0%, #07111f 60%, #06111f 100%);
+    color: #eef5ff;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 85%);
+    opacity: 0.45;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
