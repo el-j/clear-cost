@@ -118,6 +118,13 @@ export function formatTime(totalHours: number, lang: AppLang = 'de'): string {
     : `${normalizedHours}h ${normalizedMinutes}m`;
 }
 
+export function formatQuoteDate(timestamp: number, lang: AppLang): string {
+  return new Intl.DateTimeFormat(lang === 'de' ? 'de-DE' : 'en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(timestamp));
+}
+
 export function calculateQuote(state: CalculatorState): CalculatorResults {
   const itemsPerPlate = Math.max(state.itemsPerPlate, 1);
   const totalItems = Math.max(state.totalItems, 0);

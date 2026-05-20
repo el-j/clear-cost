@@ -20,6 +20,7 @@ export interface SavedProject extends ProjectState {
   quotes: QuoteSnapshot[];
   lastQuote?: QuoteSnapshot;
   activeQuoteId?: string;
+  activeQuoteGeneratedAt?: number;
 }
 
 export interface ProjectStoreState {
@@ -32,7 +33,7 @@ export interface ProjectStoreState {
   saveCurrentProject: () => string;
   saveCurrentQuote: (quote: Omit<QuoteSnapshot, 'id'>) => string;
   loadProject: (id: string) => QuoteSnapshot | undefined;
-  setActiveQuote: (projectId: string, quoteId: string) => QuoteSnapshot | undefined;
+  setActiveQuote: (projectId: string, quoteId: string, generatedAt?: number) => QuoteSnapshot | undefined;
   duplicateProject: (id: string) => void;
   deleteProject: (id: string) => void;
   newProject: () => void;
@@ -82,6 +83,7 @@ const createSavedProject = (project: ProjectState, quote?: QuoteSnapshot): Saved
     quotes: quote ? [quote] : [],
     lastQuote: quote,
     activeQuoteId: quote?.id,
+    activeQuoteGeneratedAt: quote?.generatedAt,
   };
 };
 
@@ -108,8 +110,26 @@ const normalizeQuoteSnapshot = (quote: Omit<QuoteSnapshot, 'id'> & Partial<Quote
   };
 };
 
+const ensureUniqueQuoteIds = (quotes: QuoteSnapshot[]): QuoteSnapshot[] => {
+  const seen = new Set<string>();
+
+  return quotes.map((quote, index) => {
+    if (!seen.has(quote.id)) {
+      seen.add(quote.id);
+      return quote;
+    }
+
+    const nextId = `${quote.id}-${quote.generatedAt}-${index}`;
+    seen.add(nextId);
+    return {
+      ...quote,
+      id: nextId,
+    };
+  });
+};
+
 const normalizeSavedProject = (project: ProjectState & Partial<SavedProject>): SavedProject => {
-  const quotes = (project.quotes ?? []).map((quote) => normalizeQuoteSnapshot(quote));
+  const quotes = ensureUniqueQuoteIds((project.quotes ?? []).map((quote) => normalizeQuoteSnapshot(quote)));
   const latestQuoteFromList = quotes.length > 0 ? quotes[quotes.length - 1] : undefined;
   const normalizedLastQuote = project.lastQuote ? normalizeQuoteSnapshot(project.lastQuote) : latestQuoteFromList;
 
@@ -121,6 +141,7 @@ const normalizeSavedProject = (project: ProjectState & Partial<SavedProject>): S
     quotes,
     lastQuote: normalizedLastQuote,
     activeQuoteId: project.activeQuoteId ?? normalizedLastQuote?.id,
+    activeQuoteGeneratedAt: project.activeQuoteGeneratedAt ?? normalizedLastQuote?.generatedAt,
   };
 };
 
@@ -144,6 +165,7 @@ const upsertProject = (
               quotes: normalizedQuote ? [...project.quotes, normalizedQuote] : project.quotes,
               lastQuote: normalizedQuote ?? project.lastQuote,
               activeQuoteId: normalizedQuote?.id ?? project.activeQuoteId,
+              activeQuoteGeneratedAt: normalizedQuote?.generatedAt ?? project.activeQuoteGeneratedAt,
             }
           : project,
       ),
@@ -193,7 +215,14 @@ export const useProjectStore = create<ProjectStoreState>()(
         const project = get().projects.find((entry) => entry.id === id);
         if (!project) return undefined;
 
-        const activeQuote = project.quotes.find((quote) => quote.id === project.activeQuoteId) ?? project.lastQuote;
+        const activeQuote =
+          project.quotes.find(
+            (quote) =>
+              quote.id === project.activeQuoteId &&
+              (project.activeQuoteGeneratedAt === undefined || quote.generatedAt === project.activeQuoteGeneratedAt),
+          ) ??
+          project.quotes.find((quote) => quote.id === project.activeQuoteId) ??
+          project.lastQuote;
         set({
           currentProject: cloneProject(project),
           activeProjectId: project.id,
@@ -201,11 +230,14 @@ export const useProjectStore = create<ProjectStoreState>()(
 
         return activeQuote;
       },
-      setActiveQuote: (projectId, quoteId) => {
+      setActiveQuote: (projectId, quoteId, generatedAt) => {
         const project = get().projects.find((entry) => entry.id === projectId);
         if (!project) return undefined;
 
-        const activeQuote = project.quotes.find((quote) => quote.id === quoteId);
+        const activeQuote =
+          project.quotes.find(
+            (quote) => quote.id === quoteId && (generatedAt === undefined || quote.generatedAt === generatedAt),
+          ) ?? project.quotes.find((quote) => quote.id === quoteId);
         if (!activeQuote) return undefined;
 
         set((state) => ({
@@ -213,7 +245,8 @@ export const useProjectStore = create<ProjectStoreState>()(
             entry.id === projectId
               ? {
                   ...entry,
-                  activeQuoteId: quoteId,
+                  activeQuoteId: activeQuote.id,
+                  activeQuoteGeneratedAt: activeQuote.generatedAt,
                   lastQuote: activeQuote,
                   updatedAt: Date.now(),
                 }
