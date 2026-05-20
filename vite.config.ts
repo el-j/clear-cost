@@ -11,4 +11,9 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['tests/e2e/**'],
   },
+  base: process.env.NODE_ENV === 'production' ? '/clear-cost/' : '/',
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+  },
 });
